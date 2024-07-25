@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CalyxOS Download</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+</head>
+<body>
+  <div class="container mt-5">
+    <h1 class="text-center">Download CalyxOS</h1>
+    <div class="form-group mb-3">
+      <label for="deviceSelect">Select your device:</label>
+      <select class="form-select" id="deviceSelect">
+        <option value="">Loading devices...</option>
+      </select>
+    </div>
+    <div id="buildInfo" class="d-none">
+      <div class="card">
+        <div class="card-body">
+          <h5 class="card-title">Build Found</h5>
+          <p class="card-text" id="buildDetails"></p>
+          <a href="#" id="downloadLink" class="btn btn-primary" target="_blank">Download</a>
+        </div>
+      </div>
+    </div>
+    <div id="noBuildInfo" class="d-none">
+      <div class="alert alert-danger" role="alert">
+        No build available
+      </div>
+    </div>
+    <div class="instructions mt-3">
+      <h3>Installation Instructions</h3>
+      <p>Please note that we do <b>not</b> provide a recovery alongside CalyxOS. You can try to use a recovery of your choice, we will not make a recommendation. However, if installation fails, we will not help you. You are entirely on your own.</p>
+      <p>Download the build using the drop-down menu above, sideload it, format data and you're ready to go. For detailed instructions, e.g. regarding unlocking the bootloader, please read <a href="https://lineage-wiki.mainlining.org/devices/">our LineageOS wiki</a>.</p>
+      <!-- Add detailed installation instructions here -->
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const deviceSelect = document.getElementById('deviceSelect');
+      const buildInfo = document.getElementById('buildInfo');
+      const noBuildInfo = document.getElementById('noBuildInfo');
+      const buildDetails = document.getElementById('buildDetails');
+      const downloadLink = document.getElementById('downloadLink');
+
+      // Function to parse the build ID
+      function parseVersion(buildId) {
+        const major = Math.floor((buildId % 1000000) / 100000);
+        const minor = Math.floor((buildId % 100000) / 1000);
+        const patch = Math.floor((buildId % 1000) / 10);
+        return { major, minor, patch };
+      }
+
+      // Fetch devices list
+      fetch('https://raw.githubusercontent.com/cupid-development/ota/lineage-21/devices.json')
+        .then(response => response.json())
+        .then(data => {
+          deviceSelect.innerHTML = '<option value="">Select a device...</option>';
+          data.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.model;
+            option.textContent = `${device.oem} ${device.name} (${device.model})`;
+            deviceSelect.appendChild(option);
+          });
+        });
+
+      // Fetch build info when device is selected
+      deviceSelect.addEventListener('change', () => {
+        const model = deviceSelect.value;
+        if (model) {
+          const metadataUrl = `https://calyx-builds.mainlining.org/${model}-stable6`;
+          fetch(metadataUrl)
+            .then(response => response.text())
+            .then(data => {
+              const [calyxVersion, timestamp, buildId] = data.trim().split(' ');
+              const parsedCalyxVersion = parseVersion(parseInt(calyxVersion));
+              buildDetails.innerHTML = `
+                <strong>CalyxOS Version:</strong> ${parsedCalyxVersion.major}.${parsedCalyxVersion.minor}.${parsedCalyxVersion.patch}<br>
+                <strong>Timestamp:</strong> ${new Date(parseInt(timestamp) * 1000).toLocaleString()}<br>
+                <strong>Build ID:</strong> ${buildId}
+              `;
+              downloadLink.href = `https://calyx-builds.mainlining.org/${model}-ota_update-${calyxVersion}.zip`;
+              buildInfo.classList.remove('d-none');
+              noBuildInfo.classList.add('d-none');
+            })
+            .catch(() => {
+              buildInfo.classList.add('d-none');
+              noBuildInfo.classList.remove('d-none');
+            });
+        } else {
+          buildInfo.classList.add('d-none');
+          noBuildInfo.classList.add('d-none');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
